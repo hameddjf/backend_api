@@ -1,0 +1,42 @@
+version: '3.9'
+# version of docker-compose
+services:
+  app:
+    build:
+      context: .
+      # build the docker file in current directory
+      args:
+        - DEV=true
+        # Activate the development environment
+    ports:
+      - '8000:8000'
+      # connect port our local machine to port 8000 inside our docker container
+    volumes:
+      - ./app:/app
+      # sync of internal app to docker app (cloud runnin in the container)
+    command: >
+      sh -c "python manage.py runserver 0.0.0.0:8000"
+  # Specifies the type of command in Docker container to execute
+    environment:
+      - DB_HOST=db
+      - DB_NAME=devdb
+      - DB_USER=devuser
+      - DB_PASS=changeme
+    depends_on:
+      - db
+      # it will try and wait for the db service to start brfore it start the app service
+  
+  db:
+    image: postgres:13-alpine
+    volumes:
+      - dev-db-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=devdb
+      - POSTGRES_USER=devuser
+      - POSTGRES_PASSWORD=changeme
+      # to set the initial database configuration for new db service
+
+
+volumes:
+  dev-db-data: 
+
