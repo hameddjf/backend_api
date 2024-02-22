@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+     
     'core',
 ]
 
@@ -74,6 +75,7 @@ WSGI_APPLICATION = 'app.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
+# configur in docker-compose
 DATABASES = {
     'default': {
         'ENGINE'  : 'django.db.backends.postgresql',

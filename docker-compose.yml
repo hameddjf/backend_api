@@ -15,7 +15,9 @@ services:
       - ./app:/app
       # sync of internal app to docker app (cloud runnin in the container)
     command: >
-      sh -c "python manage.py runserver 0.0.0.0:8000"
+      sh -c "python manage.py wait_for_db &&
+             python manage.py migrate && 
+             python manage.py runserver 0.0.0.0:8000"
   # Specifies the type of command in Docker container to execute
     environment:
       - DB_HOST=db

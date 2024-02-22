@@ -35,8 +35,8 @@ RUN python -m venv /py && \
 # run in alpine image include (
 #     22= add apk and install postgresql
 #     23= set the virtual dependency packege
-#     30= remove the temp build deps (in line 24)  
 #     29= remove /tmp directory = to not depend on the image
+#     30= remove the temp build deps (in line 24)  
 #     31= create new user in docker image with no password and no directory home / in the last is name of user (we dont want use the root user - dont use root user)
 # )
 ENV PATH="/py/bin:$PATH"

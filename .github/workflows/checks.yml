@@ -22,7 +22,8 @@ jobs :
         uses: actions/checkout@v2
     # this step will be check our code inside github action job
       - name: Test
-        run : docker-compose run --rm app sh -c "python manage.py test"
+        run : docker-compose run --rm app sh -c "python manage.py wait_for_db &&
+                                                 python manage.py test"
     # this step just do(run) the unit test
       - name: Lint
         run : docker-compose run --rm app sh -c "flake8"
