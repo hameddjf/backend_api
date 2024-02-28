@@ -4,6 +4,10 @@ test for models.
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 
+from core.models import ProGuide
+
+from decimal import Decimal
+
 
 class ModelsTests(TestCase):
     """test models."""
@@ -47,3 +51,22 @@ class ModelsTests(TestCase):
 
         self.assertTrue(user.is_superuser)
         self.assertTrue(user.is_staff)
+
+    def test_create_proguide(self):
+        """test creating a recipe is successful"""
+        user = get_user_model().objects.create_user(
+            'hameddjf33@gmail.com',
+            '12345678',
+        )
+
+        proguide = ProGuide.objects.create(
+            user=user,
+            title='object num1',
+            time_minutes=5,
+
+            # no logic for using decimal < int
+            price=Decimal('1.50'),
+            description='description of object num1'
+        )
+
+        self.assertEqual(str(proguide), proguide.title)

@@ -1,14 +1,15 @@
 """
 database models.
 """
-
-from gettext import gettext as _
 from django.db import models
 from django.contrib.auth.models import (
     AbstractBaseUser,
     BaseUserManager,
     PermissionsMixin,
 )
+from django.conf import settings
+
+from gettext import gettext as _
 
 
 class UserManager(BaseUserManager):
@@ -44,3 +45,18 @@ class User(AbstractBaseUser, PermissionsMixin):
     objects = UserManager()
 
     USERNAME_FIELD = 'email'
+
+
+class ProGuide(models.Model):
+    """ProGuide objects"""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL,
+                             verbose_name=_("کاربر"),
+                             on_delete=models.CASCADE)
+    title = models.CharField(_("عنوان"), max_length=500)
+    description = models.TextField(_("توضیحات"), blank=True)
+    time_minutes = models.IntegerField(_("زمان بر دقیقه"))
+    price = models.DecimalField(_("قیمت"), max_digits=9, decimal_places=2)
+    link = models.CharField(_("لینک"), max_length=500, blank=True)
+
+    def __str__(self):
+        return self.title
