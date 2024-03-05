@@ -8,7 +8,7 @@ from rest_framework.test import APIClient
 
 from decimal import Decimal
 
-from core.models import ProGuide
+from core.models import ProGuide, Tag
 from proguide.serializers import ProGuideSerializer, ProGuideDetailSerializer
 
 
@@ -206,3 +206,99 @@ class PrivateProGuideApiTest(TestCase):
 
         self.assertEqual(result.status_code, status.HTTP_404_NOT_FOUND)
         self.assertTrue(ProGuide.objects.filter(id=proguide.id).exists())
+
+    def test_create_proguide_with_new_tags(self):
+        """test creating a proguide with new tags"""
+        payload = {
+            'title': 'title num1',
+            'time_minutes': 30,
+            'price': Decimal('9.21'),
+            'tags': [{'name': 'hameddjf01'}, {'name': 'hameddjf02'}]
+        }
+
+        result = self.client.post(PROGUIDES_URL, payload, format='json')
+
+        self.assertEqual(result.status_code, status.HTTP_201_CREATED)
+        proguides = ProGuide.objects.filter(user=self.user)
+        # check for authenticated user ...bool
+        self.assertEqual(proguides.count(), 1)
+        # به اولین ایتمی ک برگردونده شده proguides اختصاص دادن
+        proguide = proguides[0]
+        # counting the tags,must have 2 tags (in payload)
+        self.assertEqual(proguide.tags.count(), 2)
+        for tag in payload['tags']:
+            exists = proguide.tags.filter(
+                name=tag['name'],
+                user=self.user,
+            ).exists()
+            self.assertTrue(exists)
+
+    def test_create_proguide_with_existing_tags(self):
+        """test creating a proguide with existing tag"""
+        tag_indian = Tag.objects.create(user=self.user, name='hameddjf33')
+        payload = {
+            'title': 'object num2',
+            'time_minutes': '42',
+            'price': Decimal('65.21'),
+            'tags': [{'name': 'hameddjf33'}, {'name': 'hameddjf01'}],
+        }
+        result = self.client.post(PROGUIDES_URL, payload, format='json')
+        self.assertEqual(result.status_code, status.HTTP_201_CREATED)
+        proguides = ProGuide.objects.filter(user=self.user)
+        self.assertEqual(proguides.count(), 1)
+        proguide = proguides[0]
+        self.assertEqual(proguide.tags.count(), 2)
+        self.assertIn(tag_indian, proguide.tags.all())
+        for tag in payload['tags']:
+            exists = proguide.tags.filter(
+                name=tag['name'],
+                user=self.user,
+            ).exists()
+            self.assertTrue(exists)
+
+    def test_create_tag_on_update(self):
+        """test creating tag when updating a proguide"""
+        proguide = create_proguide(user=self.user)
+
+        payload = {
+            'tags': [{'name': 'hameddjf33'}]
+        }
+        url = detail_url(proguide.id)
+        # change (patch) the tags from payload
+        result = self.client.patch(url, payload, format='json')
+
+        self.assertEqual(result.status_code, status.HTTP_200_OK)
+        # expected get the new tag from Tag (create new tag than get it)
+        new_tag = Tag.objects.get(user=self.user, name='hameddjf33')
+        # check the new tag for existing in proguide
+        self.assertIn(new_tag, proguide.tags.all())
+
+    def test_update_proguide_assign_tag(self):
+        """test assigning an existing tag when updating a proguide"""
+
+        tag_me = Tag.objects.create(user=self.user, name='hameddjf33')
+        proguide = create_proguide(user=self.user)
+        proguide.tags.add(tag_me)
+
+        tag_you = Tag.objects.create(user=self.user, name='hameddjf01')
+        payload = {
+            'tags': [{'name': 'hameddjf01'}]
+        }
+        url = detail_url(proguide.id)
+        result = self.client.patch(url, payload, format='json')
+
+        self.assertEqual(result.status_code, status.HTTP_200_OK)
+        self.assertIn(tag_you, proguide.tags.all())
+        self.assertNotIn(tag_me, proguide.tags.all())
+
+    def test_clear_proguide_tags(self):
+        """test clearing a proguides tags"""
+        tag = Tag.objects.create(user=self.user, name='hameddjf33')
+        proguide = create_proguide(user=self.user)
+        proguide.tags.add(tag)
+        payload = {'tags': []}
+        url = detail_url(proguide.id)
+        result = self.client.patch(url, payload, format='json')
+
+        self.assertEqual(result.status_code, status.HTTP_200_OK)
+        self.assertEqual(proguide.tags.count(), 0)

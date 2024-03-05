@@ -4,9 +4,14 @@ test for models.
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 
-from core.models import ProGuide
+from core.models import ProGuide, Tag, Ingredient
 
 from decimal import Decimal
+
+
+def create_user(email='hameddjf33@gmail.com', password='12345678'):
+    """create and return a new user"""
+    return get_user_model().objects.create_user(email, password)
 
 
 class ModelsTests(TestCase):
@@ -70,3 +75,20 @@ class ModelsTests(TestCase):
         )
 
         self.assertEqual(str(proguide), proguide.title)
+
+    def test_create_tag(self):
+        """test creating a tag is successful"""
+        user = create_user()
+        tag = Tag.objects.create(user=user, name='num1')
+
+        self.assertEqual(str(tag), tag.name)
+
+    def test_create_ingredient(self):
+        """test creating an ingredient is successful"""
+        user = create_user()
+        ingredient = Ingredient.objects.create(
+            user=user,
+            name='object1'
+        )
+
+        self.assertEqual(str(ingredient), ingredient.name)

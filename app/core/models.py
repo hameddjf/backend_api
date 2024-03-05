@@ -58,5 +58,32 @@ class ProGuide(models.Model):
     price = models.DecimalField(_("قیمت"), max_digits=9, decimal_places=2)
     link = models.CharField(_("لینک"), max_length=500, blank=True)
 
+    tags = models.ManyToManyField("Tag", verbose_name=_("تگ"))
+    ingredients = models.ManyToManyField("Ingredient", verbose_name=_("تگ"))
+
     def __str__(self):
         return self.title
+
+
+class Tag(models.Model):
+    """tag for filtering ProGuide"""
+    name = models.CharField(_("اسم"), max_length=503)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL,
+                             verbose_name=_("کاربر"), on_delete=models.CASCADE)
+
+    class Meta:
+        verbose_name = _("تگ")
+        verbose_name_plural = _("تگها")
+
+    def __str__(self):
+        return self.name
+
+
+class Ingredient(models.Model):
+    """ingredient for ProGuide"""
+    name = models.CharField(_("نام"), max_length=500)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL,
+                             verbose_name=_("کاربر"), on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.name
