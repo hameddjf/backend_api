@@ -4,8 +4,9 @@ test for models.
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 
-from core.models import ProGuide, Tag, Ingredient
+from core.models import ProGuide, Tag, Ingredient, proguide_image_file_path
 
+from unittest.mock import patch
 from decimal import Decimal
 
 
@@ -92,3 +93,17 @@ class ModelsTests(TestCase):
         )
 
         self.assertEqual(str(ingredient), ingredient.name)
+
+    """
+    (mock object) با یک شیئ جعلی uuid4 برای جایگزینی موقت تابع @patch بوسیله
+    منحصر بفرد رو شبیه سازی کنه تا uuid می‌سازیم تا هنگام تست، یک
+    هر فایلی که آپلود می‌کنیم یه اسم منحصر به فرد داشته باشه.
+    """
+    @patch('core.models.uuid.uuid4')
+    def test_proguide_file_name_uuid(self, mock_uuid):
+        """test generating image path"""
+        uuid = 'test-uuid'
+        mock_uuid.return_value = uuid
+        file_path = proguide_image_file_path(None, 'example.jpg')
+
+        self.assertEqual(file_path, f'uploads/proguide/{uuid}.jpg')

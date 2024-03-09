@@ -6,9 +6,12 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
 
+from PIL import Image
 from decimal import Decimal
+import tempfile
+import os
 
-from core.models import ProGuide, Tag
+from core.models import ProGuide, Tag, Ingredient
 from proguide.serializers import ProGuideSerializer, ProGuideDetailSerializer
 
 
@@ -18,6 +21,11 @@ PROGUIDES_URL = reverse('proguide:proguide-list')
 def detail_url(proguide_id):
     """create and return a proguide detail url"""
     return reverse("proguide:proguide-detail", args=[proguide_id])
+
+
+def image_upload_url(proguide_id):
+    """create and return an image upload url"""
+    return reverse('proguide:proguide-upload-image', args=[proguide_id])
 
 
 def create_proguide(user, **params):
@@ -302,3 +310,193 @@ class PrivateProGuideApiTest(TestCase):
 
         self.assertEqual(result.status_code, status.HTTP_200_OK)
         self.assertEqual(proguide.tags.count(), 0)
+
+    def test_create_proguide_with_new_ingredients(self):
+        """test creating a proguide with new ingredients"""
+        payload = {
+            'title': 'pen',
+            'time_minutes': 40,
+            'price': Decimal('4.32'),
+            'ingredients': [{'name': 'book'},
+                            {'name': 'notebook'}],
+        }
+        # اعمال پیلود با فورمت جیسان به ادرس بصوت پوست
+        result = self.client.post(PROGUIDES_URL, payload, format='json')
+
+        self.assertEqual(result.status_code, status.HTTP_201_CREATED)
+        # دستوراتو بوسیله یوزر فیلتر میکنیم
+        proguides = ProGuide.objects.filter(user=self.user)
+        # expected 1 proguide
+        self.assertEqual(proguides.count(), 1)
+        # getting first proguide
+        proguide = proguides[0]
+        # checking ingredients for proguide, must have 2 ingredient
+        self.assertEqual(proguide.ingredients.count(), 2)
+        # looping all ingredients in payload
+        for ingredient in payload['ingredients']:
+            exists = proguide.ingredients.filter(
+                name=ingredient['name'],
+                user=self.user,
+            ).exists()
+            self.assertTrue(exists)
+
+    def test_create_proguide_with_existing_ingredient(self):
+        """test creating a new proguide with existing ingredient"""
+        ingredient = Ingredient.objects.create(user=self.user, name='pencil')
+        payload = {
+            'title': 'online',
+            'time_minutes': 35,
+            'price': '54.23',
+            'ingredients': [
+                {'name': 'pencil'},
+                {'name': 'pen'},
+            ]}
+        result = self.client.post(PROGUIDES_URL, payload, format='json')
+
+        self.assertEqual(result.status_code, status.HTTP_201_CREATED)
+        proguides = ProGuide.objects.filter(user=self.user)
+        self.assertEqual(proguides.count(), 1)
+        proguide = proguides[0]
+        self.assertEqual(proguide.ingredients.count(), 2)
+        self.assertIn(ingredient, proguide.ingredients.all())
+        for ingredient in payload['ingredients']:
+            exists = proguide.ingredients.filter(
+                name=ingredient['name'],
+                user=self.user,
+            ).exists()
+            self.assertTrue(exists)
+
+    def test_create_ingredient_on_update(self):
+        """test creating an ingredient when updating a proguide"""
+        proguide = create_proguide(user=self.user)
+
+        payload = {'ingredients': [{'name': 'pen'}]}
+        url = detail_url(proguide.id)
+        result = self.client.patch(url, payload, format='json')
+
+        self.assertEqual(result.status_code, status.HTTP_200_OK)
+        new_ingredient = Ingredient.objects.get(user=self.user, name='pen')
+        self.assertIn(new_ingredient, proguide.ingredients.all())
+
+    def test_update_proguide_assign_ingredient(self):
+        """test assigning an existing ingredient when updating a proguide"""
+        ingredient1 = Ingredient.objects.create(user=self.user, name='paper')
+        proguide = create_proguide(user=self.user)
+        proguide.ingredients.add(ingredient1)
+
+        ingredient2 = Ingredient.objects.create(user=self.user, name='pen')
+        payload = {'ingredients': [{'name': 'pen'}]}
+        url = detail_url(proguide.id)
+        result = self.client.patch(url, payload, format='json')
+
+        self.assertEqual(result.status_code, status.HTTP_200_OK)
+        # ingredient2 in all
+        self.assertIn(ingredient2, proguide.ingredients.all())
+        self.assertNotIn(ingredient1, proguide.ingredients.all())
+
+    def test_clear_proguide_ingredients(self):
+        """test clearing a proguides ingredients"""
+        ingredient = Ingredient.objects.create(user=self.user, name='pencil')
+        proguide = create_proguide(user=self.user)
+        proguide.ingredients.add(ingredient)
+
+        payload = {'ingredients': []}
+        url = detail_url(proguide.id)
+        result = self.client.patch(url, payload, format='json')
+
+        self.assertEqual(result.status_code, status.HTTP_200_OK)
+        self.assertEqual(proguide.ingredients.count(), 0)
+
+    def test_filter_by_tags(self):
+        """test filtering proguide by tags"""
+        p1 = create_proguide(user=self.user, title='hameddjf33')
+        p2 = create_proguide(user=self.user, title='hameddjf01')
+        tag1 = Tag.objects.create(user=self.user, name='pen')
+        tag2 = Tag.objects.create(user=self.user, name='pencil')
+        p1.tags.add(tag1)
+        p2.tags.add(tag2)
+        p3 = create_proguide(user=self.user, title='hameddjf02')
+
+        params = {'tags': f'{tag1.id}, {tag2.id}'}
+        result = self.client.get(PROGUIDES_URL, params)
+
+        s1 = ProGuideSerializer(p1)
+        s2 = ProGuideSerializer(p2)
+        s3 = ProGuideSerializer(p3)
+
+        self.assertIn(s1.data, result.data)
+        self.assertIn(s2.data, result.data)
+        self.assertNotIn(s3.data, result.data)
+
+    def test_filter_by_ingredients(self):
+        """test filtering proguide by ingredients"""
+        p1 = create_proguide(user=self.user, title='hameddjf33gmail.com')
+        p2 = create_proguide(user=self.user, title='hameddjf01gmail.com')
+        in1 = Ingredient.objects.create(user=self.user, name='book')
+        in2 = Ingredient.objects.create(user=self.user, name='notebook')
+
+        p1.ingredients.add(in1)
+        p2.ingredients.add(in2)
+        p3 = create_proguide(self.user, title='hameddjf02@gmail.com')
+
+        params = {'ingredients': f'{in1.id},{in2.id}'}
+        result = self.client.get(PROGUIDES_URL, params)
+
+        s1 = ProGuideSerializer(p1)
+        s2 = ProGuideSerializer(p2)
+        s3 = ProGuideSerializer(p3)
+
+        self.assertIn(s1.data, result.data)
+        self.assertIn(s2.data, result.data)
+        self.assertNotIn(s3.data, result.data)
+
+
+class ImageUploadTests(TestCase):
+    """tests for the image upload api"""
+
+    def setUp(self):
+        # create client
+        self.client = APIClient()
+        # create user
+        self.user = get_user_model().objects.create_user(
+            'hameddjf33@gmail.com',
+            '12345678',
+        )
+        # authenticated user
+        self.client.force_authenticate(self.user)
+        # create proguide & set authenticated user on proguide
+        self.proguide = create_proguide(user=self.user)
+
+    # after test will run & delete the image
+    def tearDown(self):
+        self.proguide.image.delete()
+
+    def test_upload_image(self):
+        """test uploading an image to a proguide"""
+        url = image_upload_url(self.proguide.id)
+        with tempfile.NamedTemporaryFile(suffix='.jpg') as image_file:
+            # create new image with 10 10 pixel
+            image = Image.new('RGB', (10, 10))
+            image.save(image_file, format='JPEG')
+            # return to the beginning of the file to perform the next operation
+            image_file.seek(0)
+            """
+            image ایجاد یک دیکشنری با کلید
+            HTTP که به یک شیء فایل اشاره داره برای استفاده در درخواست‌های
+            که معمولاً برای ارسال فایل‌ها به سرور استفاده می‌شه.
+            """
+            payload = {'image': image_file}
+            result = self.client.post(url, payload, format='multipart')
+
+        self.proguide.refresh_from_db()
+        self.assertEqual(result.status_code, status.HTTP_200_OK)
+        self.assertIn('image', result.data)
+        self.assertTrue(os.path.exists(self.proguide.image.path))
+
+    def test_upload_image_bad_request(self):
+        """test uploading invalid image"""
+        url = image_upload_url(self.proguide.id)
+        payload = {'image': 'notanimage'}
+        result = self.client.post(url, payload, format='multipart')
+
+        self.assertEqual(result.status_code, status.HTTP_400_BAD_REQUEST)

@@ -19,9 +19,9 @@ ARG DEV=false
 # this will override in requirements.dev.txt to the true
 RUN python -m venv /py && \
     /py/bin/pip install --upgrade pip && \
-    apk add --update --no-cache postgresql-client && \
+    apk add --update --no-cache postgresql-client jpeg-dev && \
     apk add --update --no-cache --virtual .tmp-build-deps \
-        build-base postgresql-dev musl-dev && \
+        build-base postgresql-dev musl-dev zlib zlib-dev && \
     /py/bin/pip install -r /tmp/requirements.txt && \
     if [ $DEV = 'true' ]; \
         then /py/bin/pip install -r /tmp/requirements.dev.txt ; \
@@ -31,7 +31,12 @@ RUN python -m venv /py && \
     adduser \
         --disabled-password \
         --no-create-home \
-        hameddjf
+        hameddjf && \
+    mkdir -p /vol/web/media && \
+    mkdir -p /vol/web/static && \
+    chown -R hameddjf:hameddjf /vol && \
+    chmod -R 755 /vol
+
 # run in alpine image include (
 #     22= add apk and install postgresql
 #     23= set the virtual dependency packege

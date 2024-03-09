@@ -8,8 +8,20 @@ from django.contrib.auth.models import (
     PermissionsMixin,
 )
 from django.conf import settings
+from django.utils.translation import ugettext_lazy as _
 
-from gettext import gettext as _
+import uuid
+import os
+
+
+def proguide_image_file_path(instance, filename):
+    """generate file path for new proguide image"""
+    # Extract filename
+    extention = os.path.splitext(filename)[1]
+    # create filename by create uuid & extention
+    filename = f'{uuid.uuid4()}{extention}'
+
+    return os.path.join('uploads', 'proguide', filename)
 
 
 class UserManager(BaseUserManager):
@@ -60,6 +72,9 @@ class ProGuide(models.Model):
 
     tags = models.ManyToManyField("Tag", verbose_name=_("تگ"))
     ingredients = models.ManyToManyField("Ingredient", verbose_name=_("تگ"))
+    image = models.ImageField(_("تصویر"), upload_to=proguide_image_file_path,
+                              height_field=None, width_field=None,
+                              max_length=None, null=True)
 
     def __str__(self):
         return self.title
