@@ -7,6 +7,8 @@ ENV PYTHONUNBUFFERED 1
 COPY ./requirements.txt /tmp/requirements.txt
 # copy & forward requirements to (temp/requirements.txt) 
 COPY ./requirements.dev.txt /tmp/requirements.dev.txt
+# copy scripts directory (deplyment section)
+COPY ./scripts /scripts
 COPY ./app /app
 # copy requirements files(app django) in docker image to (/app)
 WORKDIR /app
@@ -21,7 +23,7 @@ RUN python -m venv /py && \
     /py/bin/pip install --upgrade pip && \
     apk add --update --no-cache postgresql-client jpeg-dev && \
     apk add --update --no-cache --virtual .tmp-build-deps \
-        build-base postgresql-dev musl-dev zlib zlib-dev && \
+        build-base postgresql-dev musl-dev zlib zlib-dev linux-headers && \
     /py/bin/pip install -r /tmp/requirements.txt && \
     if [ $DEV = 'true' ]; \
         then /py/bin/pip install -r /tmp/requirements.dev.txt ; \
@@ -35,7 +37,8 @@ RUN python -m venv /py && \
     mkdir -p /vol/web/media && \
     mkdir -p /vol/web/static && \
     chown -R hameddjf:hameddjf /vol && \
-    chmod -R 755 /vol
+    chmod -R 755 /vol && \
+    chmod -R +x /scripts
 
 # run in alpine image include (
 #     22= add apk and install postgresql
@@ -44,7 +47,10 @@ RUN python -m venv /py && \
 #     30= remove the temp build deps (in line 24)  
 #     31= create new user in docker image with no password and no directory home / in the last is name of user (we dont want use the root user - dont use root user)
 # )
-ENV PATH="/py/bin:$PATH"
+ENV PATH="/scripts:/py/bin:$PATH"
 # update the environment variable inside the image and we updating the path environment variable / define all of the directories where executables can be run
 USER hameddjf
 # change the root user to hameddjf 
+
+CMD ["run.sh"]
+

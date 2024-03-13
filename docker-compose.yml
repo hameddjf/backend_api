@@ -25,6 +25,7 @@ services:
       - DB_NAME=devdb
       - DB_USER=devuser
       - DB_PASS=changeme
+      - DEBUG=1
     depends_on:
       - db
       # it will try and wait for the db service to start brfore it start the app service
