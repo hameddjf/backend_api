@@ -1,7 +1,7 @@
 """
 serializers for the user api view.
 """
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 from django.contrib.auth import get_user_model, authenticate
 
 from rest_framework import serializers
